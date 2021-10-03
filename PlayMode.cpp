@@ -1,7 +1,7 @@
 #include "PlayMode.hpp"
 
 #include "LitColorTextureProgram.hpp"
-
+#include "TextTextureProgram.hpp" // Load to use for text
 #include "DrawLines.hpp"
 #include "Mesh.hpp"
 #include "Load.hpp"
@@ -36,201 +36,220 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
-Load< Sound::Sample > dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("dusty-floor.opus"));
-});
+GLuint VAO, VBO;
 
 PlayMode::PlayMode() : scene(*hexapod_scene) {
-	//get pointers to leg for convenience:
-	for (auto &transform : scene.transforms) {
-		if (transform.name == "Hip.FL") hip = &transform;
-		else if (transform.name == "UpperLeg.FL") upper_leg = &transform;
-		else if (transform.name == "LowerLeg.FL") lower_leg = &transform;
-	}
-	if (hip == nullptr) throw std::runtime_error("Hip not found.");
-	if (upper_leg == nullptr) throw std::runtime_error("Upper leg not found.");
-	if (lower_leg == nullptr) throw std::runtime_error("Lower leg not found.");
-
-	hip_base_rotation = hip->rotation;
-	upper_leg_base_rotation = upper_leg->rotation;
-	lower_leg_base_rotation = lower_leg->rotation;
-
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 
-	//start music loop playing:
-	// (note: position will be over-ridden in update())
-	leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
+	// ***** The rest of the implementation of this constructor heavily utilizes code from https://learnopengl.com/In-Practice/Text-Rendering
+
+	// Initial setup work for the text shader
+	{
+		// OpenGL state
+		// ------------
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
+	// Setup font
+	{
+		// FT setup code from https://learnopengl.com/In-Practice/Text-Rendering
+		if (FT_Init_FreeType(&DUMMY_FT)) throw std::runtime_error("ERROR::FREETYPE: Could not init FreeType Library");
+
+		if (FT_New_Face(DUMMY_FT, "fonts/Roboto-Regular.ttf", 0, &DUMMY_FACE)) {		// TODO use datapath for this please...
+			std::cout << "*** where is this ***" << std::endl;
+			throw std::runtime_error("ERROR::FREETYPE: Failed to load font");
+		}
+		FT_Set_Char_Size(DUMMY_FACE, 0, 1200, 0,0); // TODO unnecessary? or use FT_Set_Char_Size to set font size
+		if (FT_Load_Char(DUMMY_FACE, 'X', FT_LOAD_RENDER)) throw std::runtime_error("ERROR::FREETYTPE: Failed to load Glyph");
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+
+		// Setup Harbuz to shape font - setup code from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
+		/* Create hb-ft font. */
+		hb_font_t *hb_font;
+		hb_font = hb_ft_font_create(DUMMY_FACE, NULL);
+
+		/* Create hb-buffer and populate. */
+		hb_buffer_t *DUMMY_TEST = hb_buffer_create();
+		hb_buffer_add_utf8(DUMMY_TEST, "Hello, I am on the screen!", -1, 0, -1);
+		hb_buffer_guess_segment_properties(DUMMY_TEST);
+		/* Shape it! */
+		hb_shape(hb_font, DUMMY_TEST, NULL, 0);
+		// Add it to list of tracked buffers
+		HB_Buffers.push_back(DUMMY_TEST);
+		
+		// Back to following https://learnopengl.com/In-Practice/Text-Rendering - 
+		// configure VAO/VBO for texture quads
+		// -----------------------------------
+		glGenVertexArrays(1, &VAO);
+		glGenBuffers(1, &VBO);
+		glBindVertexArray(VAO);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindVertexArray(0);
+	}
 }
 
 PlayMode::~PlayMode() {
+	// --- TODO: For dummy test, runs for entire duration of game
+	// So cleanup is done here, but remove this later!
+	// jk we will use a single font for the duration of the game...
+	FT_Done_Face(DUMMY_FACE);
+	FT_Done_FreeType(DUMMY_FT);		// Discard when done
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
-	if (evt.type == SDL_KEYDOWN) {
-		if (evt.key.keysym.sym == SDLK_ESCAPE) {
-			SDL_SetRelativeMouseMode(SDL_FALSE);
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_a) {
-			left.downs += 1;
-			left.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.downs += 1;
-			right.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.downs += 1;
-			up.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.downs += 1;
-			down.pressed = true;
-			return true;
-		}
-	} else if (evt.type == SDL_KEYUP) {
-		if (evt.key.keysym.sym == SDLK_a) {
-			left.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.pressed = false;
-			return true;
-		}
-	} else if (evt.type == SDL_MOUSEBUTTONDOWN) {
-		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
-			SDL_SetRelativeMouseMode(SDL_TRUE);
-			return true;
-		}
-	} else if (evt.type == SDL_MOUSEMOTION) {
-		if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
-			glm::vec2 motion = glm::vec2(
-				evt.motion.xrel / float(window_size.y),
-				-evt.motion.yrel / float(window_size.y)
-			);
-			camera->transform->rotation = glm::normalize(
-				camera->transform->rotation
-				* glm::angleAxis(-motion.x * camera->fovy, glm::vec3(0.0f, 1.0f, 0.0f))
-				* glm::angleAxis(motion.y * camera->fovy, glm::vec3(1.0f, 0.0f, 0.0f))
-			);
-			return true;
-		}
-	}
-
-	return false;
+	return true;
 }
 
 void PlayMode::update(float elapsed) {
 
-	//slowly rotates through [0,1):
-	wobble += elapsed / 10.0f;
-	wobble -= std::floor(wobble);
-
-	hip->rotation = hip_base_rotation * glm::angleAxis(
-		glm::radians(5.0f * std::sin(wobble * 2.0f * float(M_PI))),
-		glm::vec3(0.0f, 1.0f, 0.0f)
-	);
-	upper_leg->rotation = upper_leg_base_rotation * glm::angleAxis(
-		glm::radians(7.0f * std::sin(wobble * 2.0f * 2.0f * float(M_PI))),
-		glm::vec3(0.0f, 0.0f, 1.0f)
-	);
-	lower_leg->rotation = lower_leg_base_rotation * glm::angleAxis(
-		glm::radians(10.0f * std::sin(wobble * 3.0f * 2.0f * float(M_PI))),
-		glm::vec3(0.0f, 0.0f, 1.0f)
-	);
-
-	//move sound to follow leg tip position:
-	leg_tip_loop->set_position(get_leg_tip_position(), 1.0f / 60.0f);
-
-	//move camera:
-	{
-
-		//combine inputs into a move:
-		constexpr float PlayerSpeed = 30.0f;
-		glm::vec2 move = glm::vec2(0.0f);
-		if (left.pressed && !right.pressed) move.x =-1.0f;
-		if (!left.pressed && right.pressed) move.x = 1.0f;
-		if (down.pressed && !up.pressed) move.y =-1.0f;
-		if (!down.pressed && up.pressed) move.y = 1.0f;
-
-		//make it so that moving diagonally doesn't go faster:
-		if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
-
-		glm::mat4x3 frame = camera->transform->make_local_to_parent();
-		glm::vec3 right = frame[0];
-		//glm::vec3 up = frame[1];
-		glm::vec3 forward = -frame[2];
-
-		camera->transform->position += move.x * right + move.y * forward;
-	}
-
-	{ //update listener to camera position:
-		glm::mat4x3 frame = camera->transform->make_local_to_parent();
-		glm::vec3 right = frame[0];
-		glm::vec3 at = frame[3];
-		Sound::listener.set_position_right(at, right, 1.0f / 60.0f);
-	}
-
-	//reset button press counters:
-	left.downs = 0;
-	right.downs = 0;
-	up.downs = 0;
-	down.downs = 0;
 }
+
+
+void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color) {
+	// Render text - again following https://learnopengl.com/In-Practice/Text-Rendering, function RenderText()
+	// Setup character render state to render text 
+	
+	// Our render state is associated with the shader program color_texture_program
+	glUseProgram(text_texture_program->program);
+	// According to the text rendering tutorial:
+	// "For rendering text we (usually) do not need perspective, and using an 
+	// orthographic projection matrix also allows us to specify all vertex coordinates in screen coordinates"
+	glm::mat4 projection = glm::ortho(0.0f, 1280.0f, 0.0f, 720.0f);
+	// (Again) according to the text rendering tutorial:
+	// "We set the projection matrix's bottom parameter to 0.0f 
+	// and its top parameter equal to the window's height. 
+	// The result is that we specify coordinates with y values ranging from 
+	// the bottom part of the screen (0.0f) to the top part of the screen (600.0f). 
+	// This means that the point (0.0, 0.0) now corresponds to the bottom-left corner.
+	// So we have to pass a pointer to projection[0][0] to the program's projection matrix
+	// as "values" parameter of glUniformMatrix4fv
+	glUniformMatrix4fv(text_texture_program->OBJECT_TO_CLIP_mat4, 1, GL_FALSE, &projection[0][0]);
+	// Since the shader is programmed to take in a text color as uniform, we also need to set this now
+	glUniform3f(text_texture_program->Color_vec3, 0.0f, 0.0f, 0.0f);		// TODO dynamically set colors here, read in as game struct
+	glActiveTexture(GL_TEXTURE0);
+	glBindVertexArray(VAO);
+
+	// Get current HB buffer
+	hb_buffer_t *DUMMY_TEST = HB_Buffers[hb_index];
+
+	// Harbuzz buffer processing code from http://www.manpagez.com/html/harfbuzz/harfbuzz-2.3.1/ch03s03.php
+	// Get glyph and position information
+	unsigned int glyph_count;
+	hb_glyph_info_t *glyph_info    = hb_buffer_get_glyph_infos(DUMMY_TEST, &glyph_count);
+
+	// Iterate through all the necessary glyphs to render in this buffer
+    for (uint8_t i = 0; i < glyph_count; i++)
+    {
+		// From https://learnopengl.com/In-Practice/Text-Rendering
+		// "For each character, we generate a texture and store its relevant data 
+		// into a Character struct that we add to the Characters map. 
+		// This way, all data required to render each character is stored for later use."
+		// So we need to lookup if this character has been previously stored in the character map
+		char c = glyph_info[i].codepoint;
+		if (Characters.find(c) == Characters.end()) { // Character not previously rendered
+			// Load character glyph
+			if (FT_Load_Char(DUMMY_FACE, c, FT_LOAD_RENDER))
+				std::runtime_error("ERROR::FREETYTPE: Failed to load Glyph");
+			
+			// Generate texture 
+			unsigned int texture;
+			glGenTextures(1, &texture);
+			glBindTexture(GL_TEXTURE_2D, texture);
+			glTexImage2D(
+				GL_TEXTURE_2D,
+				0,
+				GL_RED,
+				DUMMY_FACE->glyph->bitmap.width,
+				DUMMY_FACE->glyph->bitmap.rows,
+				0,
+				GL_RED,
+				GL_UNSIGNED_BYTE,
+				DUMMY_FACE->glyph->bitmap.buffer
+			);
+
+			// Set texture options
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+			// Now store character for later use
+			Character character = {
+				texture, 
+				glm::ivec2(DUMMY_FACE->glyph->bitmap.width, DUMMY_FACE->glyph->bitmap.rows),
+				glm::ivec2(DUMMY_FACE->glyph->bitmap_left, DUMMY_FACE->glyph->bitmap_top),
+				(unsigned int) DUMMY_FACE->glyph->advance.x
+			};
+			Characters.insert(std::pair<char, Character>(c, character));
+		}
+
+		// Now character should be present in the map at the codepoint!
+        Character ch = Characters[c];
+
+        float xpos = x + ch.Bearing.x;
+        float ypos = y - (ch.Size.y - ch.Bearing.y);
+
+        float w = ch.Size.x;
+        float h = ch.Size.y;
+        // update VBO for each character
+        float vertices[6][4] = {
+            { xpos,     ypos + h,   0.0f, 0.0f },            
+            { xpos,     ypos,       0.0f, 1.0f },
+            { xpos + w, ypos,       1.0f, 1.0f },
+
+            { xpos,     ypos + h,   0.0f, 0.0f },
+            { xpos + w, ypos,       1.0f, 1.0f },
+            { xpos + w, ypos + h,   1.0f, 0.0f }           
+        };
+        // render glyph texture over quad
+        glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+        // update content of VBO memory
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); 
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // render quad
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        // now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+        x += (ch.Advance >> 6); // bitshift by 6 to get value in pixels (2^6 = 64)
+    }
+
+	glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
-	//update camera aspect ratio for drawable:
-	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
+	// Camera
+	{
+		//update camera aspect ratio for drawable:
+		camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
-	//set up light type and position for lit_color_texture_program:
-	// TODO: consider using the Light(s) in the scene to do this
-	glUseProgram(lit_color_texture_program->program);
-	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
-	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f,-1.0f)));
-	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
-	glUseProgram(0);
+		//set up light type and position for lit_color_texture_program:
+		// TODO: consider using the Light(s) in the scene to do this
+		glUseProgram(lit_color_texture_program->program);
+		glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
+		glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f,-1.0f)));
+		glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
+		glUseProgram(0);
 
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-	glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+		glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
 
-	scene.draw(*camera);
+		scene.draw(*camera);
+	}	
 
-	{ //use DrawLines to overlay some text:
-		glDisable(GL_DEPTH_TEST);
-		float aspect = float(drawable_size.x) / float(drawable_size.y);
-		DrawLines lines(glm::mat4(
-			1.0f / aspect, 0.0f, 0.0f, 0.0f,
-			0.0f, 1.0f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 0.0f, 0.0f, 1.0f
-		));
-
-		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
-			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
-			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
-		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
-			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
-			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-	}
-	GL_ERRORS();
-}
-
-glm::vec3 PlayMode::get_leg_tip_position() {
-	//the vertex position here was read from the model in blender:
-	return lower_leg->make_local_to_world() * glm::vec4(-1.26137f, -11.861f, 0.0f, 1.0f);
+	render_text(DUMMY_HB_INDEX, 150.0f, 300.0f, glm::vec3(0.1f, 0.1f, 0.1f));
 }
