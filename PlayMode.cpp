@@ -43,13 +43,12 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 
-	// ***** The rest of the implementation of this constructor heavily utilizes code from https://learnopengl.com/In-Practice/Text-Rendering
+	// The rest of the implementation of this constructor heavily utilizes code from https://learnopengl.com/In-Practice/Text-Rendering
 
 	// Initial setup work for the text shader
 	{
 		// OpenGL state
 		// ------------
-		glEnable(GL_CULL_FACE);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
@@ -57,25 +56,30 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	// Setup font
 	{
 		// FT setup code from https://learnopengl.com/In-Practice/Text-Rendering
-		if (FT_Init_FreeType(&DUMMY_FT)) throw std::runtime_error("ERROR::FREETYPE: Could not init FreeType Library");
+		if (FT_Init_FreeType(&ft_lib)) throw std::runtime_error("ERROR::FREETYPE: Could not init FreeType Library");
 
-		if (FT_New_Face(DUMMY_FT, "fonts/Roboto-Regular.ttf", 0, &DUMMY_FACE)) {		// TODO use datapath for this please...
+		if (FT_New_Face(ft_lib, const_cast<char *>(data_path("../fonts/Roboto-Regular.ttf").c_str()), 0, &ft_face)) {		// TODO use datapath for this please...
 			std::cout << "*** where is this ***" << std::endl;
 			throw std::runtime_error("ERROR::FREETYPE: Failed to load font");
 		}
-		FT_Set_Char_Size(DUMMY_FACE, 0, 1200, 0,0); // TODO unnecessary? or use FT_Set_Char_Size to set font size
-		if (FT_Load_Char(DUMMY_FACE, 'X', FT_LOAD_RENDER)) throw std::runtime_error("ERROR::FREETYTPE: Failed to load Glyph");
+		FT_Set_Char_Size(ft_face, 0, 1200, 0,0); // TODO unnecessary? or use FT_Set_Char_Size to set font size
+		if (FT_Load_Char(ft_face, 'X', FT_LOAD_RENDER)) throw std::runtime_error("ERROR::FREETYTPE: Failed to load Glyph");
+		
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
 
 		// Setup Harbuz to shape font - setup code from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
 		/* Create hb-ft font. */
-		hb_font_t *hb_font;
-		hb_font = hb_ft_font_create(DUMMY_FACE, NULL);
+		hb_font = hb_ft_font_create_referenced(ft_face);		// want this to last the lifetime of the program so make it referenced
 
 		/* Create hb-buffer and populate. */
 		hb_buffer_t *DUMMY_TEST = hb_buffer_create();
-		hb_buffer_add_utf8(DUMMY_TEST, "Hello, I am on the screen!", -1, 0, -1);
-		hb_buffer_guess_segment_properties(DUMMY_TEST);
+		hb_buffer_add_utf8(DUMMY_TEST, "The mitochondria is the powerhouse of the cell", -1, 0, -1);
+
+		/* Guess the script/language/direction */
+		hb_buffer_set_direction(DUMMY_TEST, HB_DIRECTION_LTR);
+		hb_buffer_set_script(DUMMY_TEST, HB_SCRIPT_LATIN);
+		// hb_buffer_guess_segment_properties(DUMMY_TEST);
+		hb_buffer_set_language(DUMMY_TEST, hb_language_from_string("en",-1));
 		/* Shape it! */
 		hb_shape(hb_font, DUMMY_TEST, NULL, 0);
 		// Add it to list of tracked buffers
@@ -97,20 +101,16 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 }
 
 PlayMode::~PlayMode() {
-	// --- TODO: For dummy test, runs for entire duration of game
-	// So cleanup is done here, but remove this later!
-	// jk we will use a single font for the duration of the game...
-	FT_Done_Face(DUMMY_FACE);
-	FT_Done_FreeType(DUMMY_FT);		// Discard when done
+	hb_font_destroy(hb_font);
+	FT_Done_Face(ft_face);
+	FT_Done_FreeType(ft_lib);
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
-
-	return true;
+	return false;
 }
 
 void PlayMode::update(float elapsed) {
-
 }
 
 
@@ -137,6 +137,7 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 	glUniform3f(text_texture_program->Color_vec3, 0.0f, 0.0f, 0.0f);		// TODO dynamically set colors here, read in as game struct
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(VAO);
+	glDisable(GL_DEPTH_TEST);
 
 	// Get current HB buffer
 	hb_buffer_t *DUMMY_TEST = HB_Buffers[hb_index];
@@ -144,7 +145,7 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 	// Harbuzz buffer processing code from http://www.manpagez.com/html/harfbuzz/harfbuzz-2.3.1/ch03s03.php
 	// Get glyph and position information
 	unsigned int glyph_count;
-	hb_glyph_info_t *glyph_info    = hb_buffer_get_glyph_infos(DUMMY_TEST, &glyph_count);
+	hb_glyph_info_t *glyph_info = hb_buffer_get_glyph_infos(DUMMY_TEST, &glyph_count);
 
 	// Iterate through all the necessary glyphs to render in this buffer
     for (uint8_t i = 0; i < glyph_count; i++)
@@ -154,10 +155,10 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 		// into a Character struct that we add to the Characters map. 
 		// This way, all data required to render each character is stored for later use."
 		// So we need to lookup if this character has been previously stored in the character map
-		char c = glyph_info[i].codepoint;
+		FT_ULong c = glyph_info[i].codepoint;
 		if (Characters.find(c) == Characters.end()) { // Character not previously rendered
 			// Load character glyph
-			if (FT_Load_Char(DUMMY_FACE, c, FT_LOAD_RENDER))
+			if (FT_Load_Glyph(ft_face, c, FT_LOAD_RENDER))
 				std::runtime_error("ERROR::FREETYTPE: Failed to load Glyph");
 			
 			// Generate texture 
@@ -168,12 +169,12 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 				GL_TEXTURE_2D,
 				0,
 				GL_RED,
-				DUMMY_FACE->glyph->bitmap.width,
-				DUMMY_FACE->glyph->bitmap.rows,
+				ft_face->glyph->bitmap.width,
+				ft_face->glyph->bitmap.rows,
 				0,
 				GL_RED,
 				GL_UNSIGNED_BYTE,
-				DUMMY_FACE->glyph->bitmap.buffer
+				ft_face->glyph->bitmap.buffer
 			);
 
 			// Set texture options
@@ -185,9 +186,9 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 			// Now store character for later use
 			Character character = {
 				texture, 
-				glm::ivec2(DUMMY_FACE->glyph->bitmap.width, DUMMY_FACE->glyph->bitmap.rows),
-				glm::ivec2(DUMMY_FACE->glyph->bitmap_left, DUMMY_FACE->glyph->bitmap_top),
-				(unsigned int) DUMMY_FACE->glyph->advance.x
+				glm::ivec2(ft_face->glyph->bitmap.width, ft_face->glyph->bitmap.rows),
+				glm::ivec2(ft_face->glyph->bitmap_left, ft_face->glyph->bitmap_top),
+				(unsigned int) ft_face->glyph->advance.x
 			};
 			Characters.insert(std::pair<char, Character>(c, character));
 		}

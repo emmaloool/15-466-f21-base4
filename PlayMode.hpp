@@ -28,6 +28,12 @@ struct PlayMode : Mode {
 
 	//----- game state -----
 
+	//input tracking:
+	struct Button {
+		uint8_t downs = 0;
+		uint8_t pressed = 0;
+	} left, right, down, up;
+
 	//local copy of the game scene (so code can change it during gameplay):
 	Scene scene;
 
@@ -43,15 +49,19 @@ struct PlayMode : Mode {
 		glm::ivec2   Bearing;    // Offset from baseline to left/top of glyph
 		unsigned int Advance;    // Offset to advance to next glyph
 	};
-	std::map<char, Character> Characters;
+	std::map<FT_ULong, Character> Characters;
 
 	// Dummy test
-	FT_Library DUMMY_FT;
-	FT_Face DUMMY_FACE;
+	FT_Library ft_lib;
+	FT_Face ft_face;
+	hb_font_t *hb_font; 
+
 	// hb_buffer_t *DUMMY_TEST;
 	std::vector<hb_buffer_t *> HB_Buffers;
 	uint32_t DUMMY_HB_INDEX = 0;
 
 	std::string test_str = "the mitochondria is the powerhouse of the cell";
+
+	char *font_path; 
 
 };
