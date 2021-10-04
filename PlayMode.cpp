@@ -56,11 +56,12 @@ void PlayMode::fill_game_state() {
             phase.id = stoi(line.substr(0, f_i));
             uint8_t num_plines = stoi(line.substr(f_i+1, s_i)); 	// tells us how many phase text lines to read
             uint8_t num_options = stoi(line.substr(s_i)); 	// tells us how many option lines to read
-			// std::cout << unsigned(phase.id) << " " << unsigned(num_plines) << " " << unsigned(num_options) << std::endl;
+			std::cout << unsigned(phase.id) << " " << unsigned(num_plines) << " " << unsigned(num_options) << std::endl;
 
 			// Add lines for phase's text
 			for (uint8_t i = 0; i < num_plines; i++) {
 				getline(txt_file, line);
+				std::cout << line << std::endl;
 
 				std::vector<char> p_text_line(line.begin(), line.end());
 				phase.text.push_back(p_text_line);
@@ -159,11 +160,35 @@ PlayMode::~PlayMode() {
 	FT_Done_FreeType(ft_lib);
 }
 
+
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
+	Phase cur_phase = phases[current_phase_index];
+
+	if (evt.type == SDL_KEYDOWN) {
+		if (evt.key.keysym.sym == SDLK_RETURN) {		// Submit choice
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_UP) {		// ++ choice
+			if (selected_index > 1) {
+				selected_index--;	// otherwise no effect
+				std::cout << "new op index: " << unsigned(selected_index) << std::endl;
+			}
+			
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_DOWN) {	// -- choice
+			if (selected_index < cur_phase.option_texts.size()) {
+				selected_index++;
+				std::cout << "new op index: " << unsigned(selected_index) << std::endl;
+			}
+			return true;
+		}
+	}
+	assert((selected_index >= 1) && (selected_index <= (cur_phase.option_texts.size())));
 	return false;
 }
 
+
 void PlayMode::update(float elapsed) {
+	// Guess there's nothing to do ¯\_(ツ)_/¯ 
 }
 
 
@@ -187,7 +212,7 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 	// as "values" parameter of glUniformMatrix4fv
 	glUniformMatrix4fv(text_texture_program->OBJECT_TO_CLIP_mat4, 1, GL_FALSE, &projection[0][0]);
 	// Since the shader is programmed to take in a text color as uniform, we also need to set this now
-	glUniform3f(text_texture_program->Color_vec3, 0.0f, 0.0f, 0.0f);		// TODO dynamically set colors here, read in as game struct
+	glUniform3f(text_texture_program->Color_vec3, color.x, color.y, color.z);		// TODO dynamically set colors here, read in as game struct
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(VAO);
 	glDisable(GL_DEPTH_TEST);
@@ -243,7 +268,7 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 				glm::ivec2(ft_face->glyph->bitmap_left, ft_face->glyph->bitmap_top),
 				(unsigned int) ft_face->glyph->advance.x
 			};
-			Characters.insert(std::pair<char, Character>(c, character));
+			Characters.insert(std::pair<FT_ULong, Character>(c, character));
 		}
 
 		// Now character should be present in the map at the codepoint!
@@ -286,6 +311,9 @@ void PlayMode::setup_phase(size_t phase_id) {
 	// Clear text buffer
 	for (auto buf : hb_buffers) hb_buffer_destroy(buf);
 	hb_buffers.clear();
+
+	// Reset option index
+	selected_index = 1;
 
 	// Procur phase at current ID
 	auto current_phase = phases[phase_id];
@@ -355,6 +383,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		render_text(0, TEXT_START_X, TEXT_START_Y - HEIGHT*i, glm::vec3(0.0f, 0.0f, 0.0f));
 	}
 	for (uint8_t j = i; j < hb_buffers.size(); j++) {
-		render_text(j, TEXT_START_X, TEXT_START_Y - HEIGHT*(j+1), glm::vec3(0.0f, 4.0f, 0.0f));
+		glm::vec3 color = (j == selected_index) ? glm::vec3(0.25f, 0.9f, 0.25f) : glm::vec3(0.8f, 0.8f, 0.8f);
+		render_text(j, TEXT_START_X, TEXT_START_Y - HEIGHT*(j+1), color);
 	}
 }

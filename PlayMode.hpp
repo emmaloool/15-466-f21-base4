@@ -56,7 +56,7 @@ struct PlayMode : Mode {
 
 	std::vector<Phase> phases;			
 	uint8_t current_phase_index = 0;	// ID of current game phase
-	uint8_t selected_index = 0;			// Logs which choice the user selected
+	uint8_t selected_index = 1;			// Logs which choice the user selected
 										// Constrained by number of options for each phase
 
 	// -------------------- Text Drawing --------------------
