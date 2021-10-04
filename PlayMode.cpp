@@ -1,7 +1,9 @@
 #include "PlayMode.hpp"
+#include "PhaseInfo.hpp"
 
 #include "LitColorTextureProgram.hpp"
 #include "TextTextureProgram.hpp" // Load to use for text
+#include "read_write_chunk.hpp"
 #include "DrawLines.hpp"
 #include "Mesh.hpp"
 #include "Load.hpp"
@@ -9,6 +11,8 @@
 #include "data_path.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
+#include <fstream>
 
 #include <random>
 
@@ -38,7 +42,9 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 
 GLuint VAO, VBO;
 
+
 PlayMode::PlayMode() : scene(*hexapod_scene) {
+
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
@@ -98,6 +104,10 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 	}
+
+	std::ifstream phase_info_in(data_path("../scenes/phase_state.bin"), std::ios::binary);
+	read_chunk(phase_info_in, "phas", &phases);
+	read_chunk(phase_info_in, "opts", &options);
 }
 
 PlayMode::~PlayMode() {

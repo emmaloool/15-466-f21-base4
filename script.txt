@@ -1,0 +1,66 @@
+0 2
+Great news! Remember that company Banana that you applied to a couple weeks ago and did a phone screen for? They thought your profile was a great fit for their kPhone App Development Software Engineer position, and after you did so well on the phone screen, they want to proceed scheduling interviews! When would you like to schedule your phone screen?
+1,In a couple days
+2,Next week
+
+1 3
+A day or too is not too much time to prepare, but hey, you think you're born to work at Banana! How are you going to prepare for the interview?
+3,It's just a phone screen, just wing it
+4,LeetCode until dawn
+5,Brush up on your elevator pitch and soft skills
+
+2 3
+A week is enough time to prepare! What are you going to study first?
+6,Review some C++ syntax - it's been a while...
+7,Pull up old projects and course notes to review
+8,LeetCode until dawn
+
+3 1
+[a couple days later...]
+9
+
+4 1
+[a couple days later...]
+10
+
+5 1
+[a couple days later...]
+11
+
+6 1
+[a couple days later...]
+12
+
+7 1
+[a couple days later...]
+13
+
+8 1
+[a couple days later...]
+14
+
+9 2
+Today's the day of your interview! Do you feel ready?
+15,No...
+16,Yeah good enough, let's go!
+
+10 0
+-
+
+11 0
+-
+
+12 0
+-
+
+13 0
+-
+
+14 0
+-
+
+15 0
+-
+
+16 0
+-

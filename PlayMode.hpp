@@ -2,6 +2,7 @@
 
 #include "Scene.hpp"
 #include "Sound.hpp"
+#include "PhaseInfo.hpp"
 
 #include <glm/glm.hpp>
 
@@ -25,20 +26,16 @@ struct PlayMode : Mode {
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 	virtual void render_text(uint32_t hb_index, float x, float y, glm::vec3 color);
-
-	//----- game state -----
-
-	//input tracking:
-	struct Button {
-		uint8_t downs = 0;
-		uint8_t pressed = 0;
-	} left, right, down, up;
+	// -------------------- scene state --------------------
 
 	//local copy of the game scene (so code can change it during gameplay):
 	Scene scene;
 
 	//camera:
 	Scene::Camera *camera = nullptr;
+
+	// -------------------- Game state --------------------
+	
 
 	// -------------------- Font Drawing --------------------
 
@@ -51,17 +48,13 @@ struct PlayMode : Mode {
 	};
 	std::map<FT_ULong, Character> Characters;
 
-	// Dummy test
+	// Since only one font is used, maintain font state globally
 	FT_Library ft_lib;
 	FT_Face ft_face;
 	hb_font_t *hb_font; 
-
-	// hb_buffer_t *DUMMY_TEST;
-	std::vector<hb_buffer_t *> HB_Buffers;
+	std::vector<hb_buffer_t *> HB_Buffers;		// this
 	uint32_t DUMMY_HB_INDEX = 0;
 
-	std::string test_str = "the mitochondria is the powerhouse of the cell";
-
-	char *font_path; 
-
+	std::vector<Phase> phases;
+    std::vector<Option> options;	
 };
