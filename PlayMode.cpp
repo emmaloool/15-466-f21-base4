@@ -1,5 +1,5 @@
 #include "PlayMode.hpp"
-#include "PhaseInfo.hpp"
+// #include "PhaseInfo.hpp"
 
 #include "LitColorTextureProgram.hpp"
 #include "TextTextureProgram.hpp" // Load to use for text
@@ -16,23 +16,23 @@
 
 #include <random>
 
-GLuint hexapod_meshes_for_lit_color_texture_program = 0;
-Load< MeshBuffer > hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-	MeshBuffer const *ret = new MeshBuffer(data_path("hexapod.pnct"));
-	hexapod_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+GLuint interview_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > interview_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("interview.pnct"));
+	interview_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
-Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
-	return new Scene(data_path("hexapod.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
-		Mesh const &mesh = hexapod_meshes->lookup(mesh_name);
+Load< Scene > interview_scene(LoadTagDefault, []() -> Scene const * {
+	return new Scene(data_path("interview.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+		Mesh const &mesh = interview_meshes->lookup(mesh_name);
 
 		scene.drawables.emplace_back(transform);
 		Scene::Drawable &drawable = scene.drawables.back();
 
 		drawable.pipeline = lit_color_texture_program_pipeline;
 
-		drawable.pipeline.vao = hexapod_meshes_for_lit_color_texture_program;
+		drawable.pipeline.vao = interview_meshes_for_lit_color_texture_program;
 		drawable.pipeline.type = mesh.type;
 		drawable.pipeline.start = mesh.start;
 		drawable.pipeline.count = mesh.count;
@@ -42,58 +42,98 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 
 GLuint VAO, VBO;
 
+void PlayMode::fill_game_state() {
+	std::fstream txt_file;
+    std::string line;
+    txt_file.open(data_path("../script.txt"), std::ios::in);
+    if (txt_file.is_open()) {
+        while (getline(txt_file, line)) {
+            Phase phase;
 
-PlayMode::PlayMode() : scene(*hexapod_scene) {
+            // Read phases as clumps of lines, so we can't just loop over all lines
+			auto f_i = line.find(' ');
+			auto s_i = line.find(' ', f_i+1);
+            phase.id = stoi(line.substr(0, f_i));
+            uint8_t num_plines = stoi(line.substr(f_i+1, s_i)); 	// tells us how many phase text lines to read
+            uint8_t num_options = stoi(line.substr(s_i)); 	// tells us how many option lines to read
+			// std::cout << unsigned(phase.id) << " " << unsigned(num_plines) << " " << unsigned(num_options) << std::endl;
+
+			// Add lines for phase's text
+			for (uint8_t i = 0; i < num_plines; i++) {
+				getline(txt_file, line);
+
+				std::vector<char> p_text_line(line.begin(), line.end());
+				phase.text.push_back(p_text_line);
+			}
+
+            if (num_options == 0) {		// Game end state, no more options
+                getline(txt_file, line);
+				if (line == "-") {
+					// std::cout << "phase " << unsigned(phase.id) << " is bad ending!" << std::endl;
+					phase.game_state = GameState::BAD;
+				}
+				else if (line == "+") {
+					// std::cout << "phase " << unsigned(phase.id) << " is good ending!" << std::endl;
+					phase.game_state = GameState::GOOD;
+				}
+
+				// Skip blank line after and move on
+                getline(txt_file, line);
+				continue;
+            }
+	
+            // Fetch the phase options after
+            for (uint8_t i = 0; i < num_options; i++) {				
+                getline(txt_file, line);
+
+				// Save option's corresponding phase index
+                auto split_ind = line.find(',');
+                phase.option_ids.push_back(stoi(line.substr(0, split_ind)));
+
+				// Save option text
+				std::vector<char> op_text(line.begin() + split_ind + 1, line.end());
+				phase.option_texts.push_back(op_text);
+			}
+
+			if (num_options == 1) {
+				phase.option_texts.back().clear();
+			}
+
+            getline(txt_file,line);		// Skip blank line ahead
+
+            phases.push_back(phase);
+        }
+    }
+}
+
+PlayMode::PlayMode() : scene(*interview_scene) {
 
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 
 	// The rest of the implementation of this constructor heavily utilizes code from https://learnopengl.com/In-Practice/Text-Rendering
+	
+	// For text shader later
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	// Initial setup work for the text shader
+	// Setup FT, HB font - code from https://learnopengl.com/In-Practice/Text-Rendering
 	{
-		// OpenGL state
-		// ------------
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	}
-
-	// Setup font
-	{
-		// FT setup code from https://learnopengl.com/In-Practice/Text-Rendering
 		if (FT_Init_FreeType(&ft_lib)) throw std::runtime_error("ERROR::FREETYPE: Could not init FreeType Library");
-
-		if (FT_New_Face(ft_lib, const_cast<char *>(data_path("../fonts/Roboto-Regular.ttf").c_str()), 0, &ft_face)) {		// TODO use datapath for this please...
-			std::cout << "*** where is this ***" << std::endl;
-			throw std::runtime_error("ERROR::FREETYPE: Failed to load font");
-		}
-		FT_Set_Char_Size(ft_face, 0, 1200, 0,0); // TODO unnecessary? or use FT_Set_Char_Size to set font size
+		if (FT_New_Face(ft_lib, const_cast<char *>(data_path("../fonts/Roboto-Regular.ttf").c_str()), 0, &ft_face)) throw std::runtime_error("ERROR::FREETYPE: Failed to load font");		// TODO use datapath for this please...
+		FT_Set_Char_Size(ft_face, 0, 1800, 0,0);
 		if (FT_Load_Char(ft_face, 'X', FT_LOAD_RENDER)) throw std::runtime_error("ERROR::FREETYTPE: Failed to load Glyph");
-		
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
 
-		// Setup Harbuz to shape font - setup code from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
 		/* Create hb-ft font. */
-		hb_font = hb_ft_font_create_referenced(ft_face);		// want this to last the lifetime of the program so make it referenced
+		hb_font = hb_ft_font_create_referenced(ft_face); // want this to last the lifetime of the program so make it referenced
+	}
 
-		/* Create hb-buffer and populate. */
-		hb_buffer_t *DUMMY_TEST = hb_buffer_create();
-		hb_buffer_add_utf8(DUMMY_TEST, "The mitochondria is the powerhouse of the cell", -1, 0, -1);
-
-		/* Guess the script/language/direction */
-		hb_buffer_set_direction(DUMMY_TEST, HB_DIRECTION_LTR);
-		hb_buffer_set_script(DUMMY_TEST, HB_SCRIPT_LATIN);
-		// hb_buffer_guess_segment_properties(DUMMY_TEST);
-		hb_buffer_set_language(DUMMY_TEST, hb_language_from_string("en",-1));
-		/* Shape it! */
-		hb_shape(hb_font, DUMMY_TEST, NULL, 0);
-		// Add it to list of tracked buffers
-		HB_Buffers.push_back(DUMMY_TEST);
-		
-		// Back to following https://learnopengl.com/In-Practice/Text-Rendering - 
-		// configure VAO/VBO for texture quads
-		// -----------------------------------
+	// Back to following https://learnopengl.com/In-Practice/Text-Rendering - 
+	// configure VAO/VBO for texture quads
+	// -----------------------------------
+	{
 		glGenVertexArrays(1, &VAO);
 		glGenBuffers(1, &VBO);
 		glBindVertexArray(VAO);
@@ -104,13 +144,16 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 	}
-
-	std::ifstream phase_info_in(data_path("../scenes/phase_state.bin"), std::ios::binary);
-	read_chunk(phase_info_in, "phas", &phases);
-	read_chunk(phase_info_in, "opts", &options);
+	
+	fill_game_state();	// Fill game state from text script
+	setup_phase(0);
 }
 
 PlayMode::~PlayMode() {
+	// Destroy FT, HB objects in reverse order of creation
+	for (auto buf : hb_buffers) hb_buffer_destroy(buf);
+	hb_buffers.clear();
+
 	hb_font_destroy(hb_font);
 	FT_Done_Face(ft_face);
 	FT_Done_FreeType(ft_lib);
@@ -150,7 +193,7 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 	glDisable(GL_DEPTH_TEST);
 
 	// Get current HB buffer
-	hb_buffer_t *DUMMY_TEST = HB_Buffers[hb_index];
+	hb_buffer_t *DUMMY_TEST = hb_buffers[hb_index];
 
 	// Harbuzz buffer processing code from http://www.manpagez.com/html/harfbuzz/harfbuzz-2.3.1/ch03s03.php
 	// Get glyph and position information
@@ -238,6 +281,44 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 }
 
 
+void PlayMode::setup_phase(size_t phase_id) {
+
+	// Clear text buffer
+	for (auto buf : hb_buffers) hb_buffer_destroy(buf);
+	hb_buffers.clear();
+
+	// Procur phase at current ID
+	auto current_phase = phases[phase_id];
+
+	// Populate HB buffers needed to render the entire scene
+	auto add_text_to_HBbuf = [this](std::vector<char> &text) {
+		// Setup HB buffer - code from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
+		// and http://www.manpagez.com/html/harfbuzz/harfbuzz-2.3.1/ch03s03.php
+
+		/* Create hb-buffer and populate. */
+		hb_buffer_t *buf = hb_buffer_create();
+		hb_buffer_add_utf8(buf, &text[0], text.size(), 0, text.size());
+
+		/* Guess the script/language/direction */
+		hb_buffer_set_direction(buf, HB_DIRECTION_LTR);
+		hb_buffer_set_script(buf, HB_SCRIPT_LATIN);
+		hb_buffer_set_language(buf, hb_language_from_string("en",-1));
+
+		/* Shape it! */
+		hb_shape(hb_font, buf, NULL, 0);
+
+		hb_buffers.push_back(buf);
+	};
+
+	for (auto &phase_txt : current_phase.text) {
+		add_text_to_HBbuf(phase_txt);
+	}
+	for (auto &op_text : current_phase.option_texts) {
+		add_text_to_HBbuf(op_text);
+	}
+}
+
+
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	// Camera
 	{
@@ -262,5 +343,18 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		scene.draw(*camera);
 	}	
 
-	render_text(DUMMY_HB_INDEX, 150.0f, 300.0f, glm::vec3(0.1f, 0.1f, 0.1f));
+	if (phases[current_phase_index].game_state != GameState::ONGOING) {
+		// render_text(0, ); 	// TODO: make sure to clear HBbuffer before and add one hbbuffer that says "game over"
+		
+		std::cout << "WE ARE STOPPING THE GAME" << std::endl;
+		return;
+	}
+
+	uint8_t i = 0;
+	for (i = 0; i < phases[current_phase_index].text.size(); i++) {
+		render_text(0, TEXT_START_X, TEXT_START_Y - HEIGHT*i, glm::vec3(0.0f, 0.0f, 0.0f));
+	}
+	for (uint8_t j = i; j < hb_buffers.size(); j++) {
+		render_text(j, TEXT_START_X, TEXT_START_Y - HEIGHT*(j+1), glm::vec3(0.0f, 4.0f, 0.0f));
+	}
 }

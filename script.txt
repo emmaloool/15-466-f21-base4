@@ -1,66 +1,67 @@
-0 2
-Great news! Remember that company Banana that you applied to a couple weeks ago and did a phone screen for? They thought your profile was a great fit for their kPhone App Development Software Engineer position, and after you did so well on the phone screen, they want to proceed scheduling interviews! When would you like to schedule your phone screen?
-1,In a couple days
-2,Next week
+0 1 2
+Great news! Remember that company Banana that you applied to a couple weeks ago? 
+1,Yeah? 
+1,No, just tell me?
 
-1 3
-A day or too is not too much time to prepare, but hey, you think you're born to work at Banana! How are you going to prepare for the interview?
-3,It's just a phone screen, just wing it
-4,LeetCode until dawn
-5,Brush up on your elevator pitch and soft skills
+1 3 2
+They thought you're a great fit for their kPhone Software Engineer position!
+So they want to schedule you for an onsite! 
+When would you like to schedule your interviews, starting tomorrow?
+2,Woah no, that's too soon. I'll need a couple weeks!
+3,Sure, I can do it Friday.
 
-2 3
-A week is enough time to prepare! What are you going to study first?
-6,Review some C++ syntax - it's been a while...
-7,Pull up old projects and course notes to review
-8,LeetCode until dawn
+3 1 2
+Friday is only a couple days a way, that's not too much time to prepare!
+4,It's whatever
+4,I have 6 homework assignments due next week, I don't have a choice!
 
-3 1
-[a couple days later...]
-9
+4 1 2
+How are you going to prepare for the interview?
+5,It's just a phone screen, just wing it
+6,LeetCode until dawn
 
-4 1
-[a couple days later...]
-10
+2 1 2
+A couple of weeks is plenty enough time to prepare, good choice!
+7,Yeah, I'm a bit rusty with C++, so I'll need to review that...
+7,Of course, this is my dream job! I need to study a lot!
 
-5 1
-[a couple days later...]
-11
+7 1 3
+What are you going to study first?
+8,Brush up your elevator pitch
+9,Pull up old projects and course notes to review
+10,LeetCode for a couple days, just to get comfortable
 
-6 1
-[a couple days later...]
-12
+5 1 1
+Ok, if you say so! Have fun!
+11,[Continue]
 
-7 1
-[a couple days later...]
-13
+6 1 1
+Ok, if you say so! Have fun!
+12,[Continue]
 
-8 1
-[a couple days later...]
-14
+8 1 1
+Reviewing some soft skills is a great start! I'll leave you to it!
+13,[Continue]
 
-9 2
-Today's the day of your interview! Do you feel ready?
-15,No...
-16,Yeah good enough, let's go!
+9 1 1
+Good thinking, the interviews for kPhone engineering are incredibly niche!
+14,[Continue]
 
-10 0
+10 1 1
+Smart smart, they're definitely ask you some tricky tree problems. See ya!
+15,[Continue]
+
+11 0 0
 -
 
-11 0
+12 0 0
 -
 
-12 0
--
+13 0 0
++
 
-13 0
--
+14 0 0
++
 
-14 0
--
-
-15 0
--
-
-16 0
--
+15 0 0
++
