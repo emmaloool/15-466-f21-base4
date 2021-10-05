@@ -62,14 +62,22 @@ void PlayMode::fill_game_state() {
 			// Add lines for phase's text
 			for (uint8_t i = 0; i < num_plines; i++) {
 				getline(txt_file, line);
-
-				std::vector<char> p_text_line(line.begin(), line.end());
+				size_t offset = 0;
+				if (line[0] == '#') {
+					std::cout << "Main text code statement!" << std::endl;
+					offset = 1;
+					phase.fonts.push_back(1);
+				}
+				else {
+					phase.fonts.push_back(0);
+				}
+				std::vector<char> p_text_line(line.begin() + offset, line.end());
 				phase.text.push_back(p_text_line);
 			}
 
             if (num_options == 0) {		// Game end state, no more options
                 getline(txt_file, line);
-
+			
 				if (line == "-") {
 					// std::cout << "phase " << unsigned(phase.id) << " is bad ending!" << std::endl;
 					phase.game_state = GameState::BAD;
@@ -89,20 +97,26 @@ void PlayMode::fill_game_state() {
 					phase.option_ids.push_back(stoi(line.substr(0, split_ind)));
 
 					// Save option text
-					std::vector<char> op_text(line.begin() + split_ind + 1, line.end());
+					size_t offset = 0;
+					if (line[split_ind + 1] == '#') {
+						std::cout << "CODE STATEMENT: " << line.substr(split_ind + 2) << std::endl;
+						phase.option_fonts.push_back(1);
+						offset = 1;
+					}
+					else {
+						phase.option_fonts.push_back(0);
+					}
+					std::vector<char> op_text(line.begin() + split_ind + 1 + offset, line.end());	
 					phase.option_texts.push_back(op_text);
 				}
 			}
 
-			for (size_t i = 0; i < num_plines; i++) { // TODO change
-				phase.fonts.push_back(0);
-			}
-			for (size_t i = 0; i < num_options; i++) { // TODO change
-				phase.option_fonts.push_back(0);
-			}
-
             getline(txt_file,line);		// Skip blank line ahead
             phases[phase.id] = phase;
+
+			assert(phase.fonts.size() == phase.text.size());
+			assert(phase.option_fonts.size() == phase.option_texts.size());
+			assert(phase.option_fonts.size() == phase.option_ids.size());
         }
     }
 }
@@ -206,9 +220,11 @@ void PlayMode::update(float elapsed) {
 }
 
 
-void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color, FT_Face face) {
+void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color, uint8_t font) {
 	// Render text - again following https://learnopengl.com/In-Practice/Text-Rendering, function RenderText()
 	// Setup character render state to render text 
+	auto Characters = font ? courier_characters : roboto_characters;
+	FT_Face face	= font ? courier_face : roboto_face;
 	
 	// Our render state is associated with the shader program color_texture_program
 	glUseProgram(text_texture_program->program);
@@ -377,7 +393,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		glm::vec3 color;
 		float offset;
 		if (cur_phase.game_state == GameState::BAD) {
-			result = "GAME OVER - You bombed your interviews. Back to LinkedIn it is!";
+			result = "GAME OVER - You bombed your interview. Back to LinkedIn it is!";
 			color = glm::vec3(0.60f, 0.0f, 0.0f);
 			offset = 165.0f;
 		}
@@ -388,20 +404,17 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		}
 		std::vector<char> result_vect(result.begin(), result.end());
 		add_text_to_HBbuf(result_vect, hb_roboto_font);
-		render_text(0, TEXT_START_X + offset, TEXT_START_Y, color, roboto_face);
+		render_text(0, TEXT_START_X + offset, TEXT_START_Y, color, 0);
 
 		return;
 	}
 
-	uint8_t i = 0;
+	size_t i = 0;
 	for (i = 0; i < cur_phase.text.size(); i++) {
-		FT_Face face = (cur_phase.fonts[i] == 0) ? roboto_face : courier_face;
-		render_text(i, TEXT_START_X, TEXT_START_Y - HEIGHT*i, glm::vec3(0.0f, 0.0f, 0.0f), face);
+		render_text(i, TEXT_START_X, TEXT_START_Y - HEIGHT*i, glm::vec3(0.0f, 0.0f, 0.0f), cur_phase.fonts[i]);
 	}
-	for (uint8_t j = i; j < hb_buffers.size(); j++) {
-		assert((j - i) >= 0 && (j-i) < cur_phase.option_fonts.size());
-		FT_Face face = (cur_phase.option_fonts[j - i] == 0) ? roboto_face : courier_face;
+	for (size_t j = i; j < hb_buffers.size(); j++) {
 		glm::vec3 color = ((j - i) == selected_index) ? glm::vec3(0.25f, 0.25f, 0.9f) : glm::vec3(0.8f, 0.8f, 0.8f);
-		render_text(j, TEXT_START_X, TEXT_START_Y - HEIGHT*(j+1), color, face);
+		render_text(j, TEXT_START_X, TEXT_START_Y - HEIGHT*(j+1), color, cur_phase.option_fonts[j - i]);
 	}
 }

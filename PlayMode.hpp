@@ -26,7 +26,7 @@ struct PlayMode : Mode {
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 	void fill_game_state();
-	void render_text(uint32_t hb_index, float x, float y, glm::vec3 color, FT_Face face);
+	void render_text(uint32_t hb_index, float x, float y, glm::vec3 color, uint8_t font);
 	void setup_phase(size_t phase_id);
 
 	// -------------------- Scene state --------------------
@@ -74,7 +74,8 @@ struct PlayMode : Mode {
 		glm::ivec2   Bearing;    // Offset from baseline to left/top of glyph
 		unsigned int Advance;    // Offset to advance to next glyph
 	};
-	std::map<FT_ULong, Character> Characters;	// Reuse characters previously rendered
+	std::map<FT_ULong, Character> roboto_characters;	// Reuse characters previously rendered
+	std::map<FT_ULong, Character> courier_characters;	// Reuse characters previously rendered
 
 	// Two fonts are loaded for the game - Roboto and Courier New
 	FT_Library roboto_lib;
@@ -94,7 +95,7 @@ struct PlayMode : Mode {
 
 		/* Create hb-buffer and populate. */
 		hb_buffer_t *buf = hb_buffer_create();
-		hb_buffer_add_utf8(buf, &text[0], text.size(), 0, text.size());
+		hb_buffer_add_utf8(buf, &text[0], (int)text.size(), 0, (int)text.size());
 
 		/* Guess the script/language/direction */
 		hb_buffer_set_direction(buf, HB_DIRECTION_LTR);

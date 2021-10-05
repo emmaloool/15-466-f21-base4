@@ -1,7 +1,7 @@
 0 1 2
 Great news! Remember that company Banana that you applied to a couple weeks ago?
-1,Yeah? 
-1,No, just tell me?
+1,#Yeah? 
+1,#No, just tell me?
 
 1 3 2
 They thought you're a great fit for their kPhone Software Engineer position!
@@ -32,11 +32,11 @@ What are you going to study first?
 10,LeetCode for a couple days, just to get comfortable
 
 5 1 1
-Ok, if you say so! Have fun!
+#Ok, if you say so! Have fun!
 11,[Continue]
 
 6 1 1
-Ok, if you say so! Have fun!
+#Ok, if you say so! Have fun!
 12,[Continue]
 
 8 1 1
