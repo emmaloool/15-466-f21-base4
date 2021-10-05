@@ -26,7 +26,7 @@ struct PlayMode : Mode {
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 	void fill_game_state();
-	void render_text(uint32_t hb_index, float x, float y, glm::vec3 color);
+	void render_text(uint32_t hb_index, float x, float y, glm::vec3 color, FT_Face face);
 	void setup_phase(size_t phase_id);
 
 	// -------------------- Scene state --------------------
@@ -38,18 +38,21 @@ struct PlayMode : Mode {
 	Scene::Camera *camera = nullptr;
 
 	// -------------------- Game state --------------------
+
 	typedef enum GS {
 		ONGOING = 0,
 		GOOD = 1,
 		BAD = 2
 	} GameState;
 	
-	
 	struct Phase {
 		GameState game_state = GameState::ONGOING;
 		size_t id;										// ID of current phase
+		std::vector<uint8_t> fonts;
 		std::vector<std::vector<char>> text;			// Text to display
+
 		std::vector<size_t> option_ids; 				// IDs of options for the phase
+		std::vector<uint8_t> option_fonts;				// Bits setting font for option
 		std::vector<std::vector<char>> option_texts; 	// Text of options for the phase
 	};
 
@@ -60,6 +63,10 @@ struct PlayMode : Mode {
 
 	// -------------------- Text Drawing --------------------
 
+	const float TEXT_START_X = 80.0f;
+	const float TEXT_START_Y = 350.0f;
+	const float HEIGHT = 40.0f;
+
 	// Character->character map and glyph struct from https://learnopengl.com/In-Practice/Text-Rendering
 	struct Character {
 		unsigned int TextureID;  // ID handle of the glyph texture
@@ -69,13 +76,19 @@ struct PlayMode : Mode {
 	};
 	std::map<FT_ULong, Character> Characters;	// Reuse characters previously rendered
 
-	// Since only one font is used, maintain font state globally
-	FT_Library ft_lib;
-	FT_Face ft_face;
-	hb_font_t *hb_font; 
-	std::vector<hb_buffer_t *> hb_buffers;	// Stores text to render for a given scene
+	// Two fonts are loaded for the game - Roboto and Courier New
+	FT_Library roboto_lib;
+	FT_Face roboto_face;
+	hb_font_t *hb_roboto_font; 
 
-	void add_text_to_HBbuf(std::vector<char> text) {
+	FT_Library courier_lib;
+	FT_Face courier_face;
+	hb_font_t *hb_courier_font; 
+
+	// Stores text to render for a given scene
+	std::vector<hb_buffer_t *> hb_buffers;
+
+	void add_text_to_HBbuf(std::vector<char> text, hb_font_t *font) {
 		// Setup HB buffer - code from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
 		// and http://www.manpagez.com/html/harfbuzz/harfbuzz-2.3.1/ch03s03.php
 
@@ -89,12 +102,8 @@ struct PlayMode : Mode {
 		hb_buffer_set_language(buf, hb_language_from_string("en",-1));
 
 		/* Shape it! */
-		hb_shape(hb_font, buf, NULL, 0);
+		hb_shape(font, buf, NULL, 0);
 
 		hb_buffers.push_back(buf);
 	}
-
-	const float TEXT_START_X = 80.0f;
-	const float TEXT_START_Y = 350.0f;
-	const float HEIGHT = 40.0f;
 };

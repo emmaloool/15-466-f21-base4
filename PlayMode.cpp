@@ -78,7 +78,7 @@ void PlayMode::fill_game_state() {
 					// std::cout << "phase " << unsigned(phase.id) << " is good ending!" << std::endl;
 					phase.game_state = GameState::GOOD;
 				}
-            }
+			}
 			else {
 				// Fetch the phase options after
 				for (uint8_t i = 0; i < num_options; i++) {				
@@ -92,6 +92,13 @@ void PlayMode::fill_game_state() {
 					std::vector<char> op_text(line.begin() + split_ind + 1, line.end());
 					phase.option_texts.push_back(op_text);
 				}
+			}
+
+			for (size_t i = 0; i < num_plines; i++) { // TODO change
+				phase.fonts.push_back(0);
+			}
+			for (size_t i = 0; i < num_options; i++) { // TODO change
+				phase.option_fonts.push_back(0);
 			}
 
             getline(txt_file,line);		// Skip blank line ahead
@@ -114,14 +121,21 @@ PlayMode::PlayMode() : scene(*interview_scene) {
 
 	// Setup FT, HB font - code from https://learnopengl.com/In-Practice/Text-Rendering
 	{
-		if (FT_Init_FreeType(&ft_lib)) throw std::runtime_error("ERROR::FREETYPE: Could not init FreeType Library");
-		if (FT_New_Face(ft_lib, const_cast<char *>(data_path("../fonts/Roboto-Regular.ttf").c_str()), 0, &ft_face)) throw std::runtime_error("ERROR::FREETYPE: Failed to load font");		// TODO use datapath for this please...
-		FT_Set_Char_Size(ft_face, 0, 1800, 0,0);
-		if (FT_Load_Char(ft_face, 'X', FT_LOAD_RENDER)) throw std::runtime_error("ERROR::FREETYTPE: Failed to load Glyph");
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+		if (FT_Init_FreeType(&roboto_lib)) throw std::runtime_error("ERROR::FREETYPE: Could not init FreeType Library");
+		if (FT_New_Face(roboto_lib, const_cast<char *>(data_path("../fonts/Roboto-Regular.ttf").c_str()), 0, &roboto_face)) throw std::runtime_error("ERROR::FREETYPE: Failed to load font");		// TODO use datapath for this please...
+		FT_Set_Char_Size(roboto_face, 0, 1800, 0,0);
+		if (FT_Load_Char(roboto_face, 'X', FT_LOAD_RENDER)) throw std::runtime_error("ERROR::FREETYPE: Failed to load Glyph");
 
-		/* Create hb-ft font. */
-		hb_font = hb_ft_font_create_referenced(ft_face); // want this to last the lifetime of the program so make it referenced
+		if (FT_Init_FreeType(&courier_lib)) throw std::runtime_error("ERROR::FREETYPE: Could not init FreeType Library");
+		if (FT_New_Face(courier_lib, const_cast<char *>(data_path("../fonts/Courier-Prime.ttf").c_str()), 0, &courier_face)) throw std::runtime_error("ERROR::FREETYPE: Failed to load font");		// TODO use datapath for this please...
+		FT_Set_Char_Size(courier_face, 0, 1800, 0,0);
+		if (FT_Load_Char(courier_face, 'X', FT_LOAD_RENDER)) throw std::runtime_error("ERROR::FREETYPE: Failed to load Glyph");
+
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // disable byte-alignment restriction
+		
+		/* Create hb-ft font - needs to last the lifetime of the program */
+		hb_roboto_font = hb_ft_font_create_referenced(roboto_face);
+		hb_courier_font = hb_ft_font_create_referenced(courier_face);		
 	}
 
 	// Back to following https://learnopengl.com/In-Practice/Text-Rendering - 
@@ -148,9 +162,13 @@ PlayMode::~PlayMode() {
 	for (auto buf : hb_buffers) hb_buffer_destroy(buf);
 	hb_buffers.clear();
 
-	hb_font_destroy(hb_font);
-	FT_Done_Face(ft_face);
-	FT_Done_FreeType(ft_lib);
+	hb_font_destroy(hb_roboto_font);
+	FT_Done_Face(roboto_face);
+	FT_Done_FreeType(roboto_lib);
+
+	hb_font_destroy(hb_courier_font);
+	FT_Done_Face(courier_face);
+	FT_Done_FreeType(courier_lib);
 }
 
 
@@ -188,7 +206,7 @@ void PlayMode::update(float elapsed) {
 }
 
 
-void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color) {
+void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color, FT_Face face) {
 	// Render text - again following https://learnopengl.com/In-Practice/Text-Rendering, function RenderText()
 	// Setup character render state to render text 
 	
@@ -232,8 +250,8 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 		FT_ULong c = glyph_info[i].codepoint;
 		if (Characters.find(c) == Characters.end()) { // Character not previously rendered
 			// Load character glyph
-			if (FT_Load_Glyph(ft_face, c, FT_LOAD_RENDER))
-				std::runtime_error("ERROR::FREETYTPE: Failed to load Glyph");
+			if (FT_Load_Glyph(face, c, FT_LOAD_RENDER))
+				std::runtime_error("ERROR::FREETYPE: Failed to load Glyph");
 			
 			// Generate texture 
 			unsigned int texture;
@@ -243,12 +261,12 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 				GL_TEXTURE_2D,
 				0,
 				GL_RED,
-				ft_face->glyph->bitmap.width,
-				ft_face->glyph->bitmap.rows,
+				face->glyph->bitmap.width,
+				face->glyph->bitmap.rows,
 				0,
 				GL_RED,
 				GL_UNSIGNED_BYTE,
-				ft_face->glyph->bitmap.buffer
+				face->glyph->bitmap.buffer
 			);
 
 			// Set texture options
@@ -260,9 +278,9 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 			// Now store character for later use
 			Character character = {
 				texture, 
-				glm::ivec2(ft_face->glyph->bitmap.width, ft_face->glyph->bitmap.rows),
-				glm::ivec2(ft_face->glyph->bitmap_left, ft_face->glyph->bitmap_top),
-				(unsigned int) ft_face->glyph->advance.x
+				glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
+				glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
+				(unsigned int) face->glyph->advance.x
 			};
 			Characters.insert(std::pair<FT_ULong, Character>(c, character));
 		}
@@ -304,7 +322,7 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 
 void PlayMode::setup_phase(size_t phase_id) {
 	// Procur phase at current ID
-	Phase current_phase = phases[phase_id];
+	Phase &current_phase = phases[phase_id];
 
 	// Reset option index
 	selected_index = 0;
@@ -315,11 +333,15 @@ void PlayMode::setup_phase(size_t phase_id) {
 
 	if (phases[phase_id].game_state != GameState::ONGOING) return;
 
-	for (std::vector<char> phase_txt : current_phase.text) {
-		add_text_to_HBbuf(phase_txt);
+	for (size_t i = 0; i < current_phase.fonts.size(); i++) {
+		hb_font_t *font = (current_phase.fonts[i] == 0) ? hb_roboto_font : hb_courier_font;
+		std::vector<char> phase_txt = current_phase.text[i];
+		add_text_to_HBbuf(phase_txt, font);
 	}
-	for (std::vector<char> op_text : current_phase.option_texts) {
-		add_text_to_HBbuf(op_text);
+	for (size_t i = 0; i < current_phase.option_fonts.size(); i++) {
+		hb_font_t *font = (current_phase.option_fonts[i] == 0) ? hb_roboto_font : hb_courier_font;
+		std::vector<char> op_text = current_phase.option_texts[i];
+		add_text_to_HBbuf(op_text, font);
 	}
 }
 
@@ -348,11 +370,13 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		scene.draw(*camera);
 	}	
 
-	if (phases[current_phase_index].game_state != GameState::ONGOING) {
+	Phase cur_phase = phases[current_phase_index];
+
+	if (cur_phase.game_state != GameState::ONGOING) {
 		std::string result;
 		glm::vec3 color;
 		float offset;
-		if (phases[current_phase_index].game_state == GameState::BAD) {
+		if (cur_phase.game_state == GameState::BAD) {
 			result = "GAME OVER - You bombed your interviews. Back to LinkedIn it is!";
 			color = glm::vec3(0.60f, 0.0f, 0.0f);
 			offset = 165.0f;
@@ -363,18 +387,21 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			offset = 300.0f;
 		}
 		std::vector<char> result_vect(result.begin(), result.end());
-		add_text_to_HBbuf(result_vect);
-		render_text(0, TEXT_START_X + offset, TEXT_START_Y, color);
+		add_text_to_HBbuf(result_vect, hb_roboto_font);
+		render_text(0, TEXT_START_X + offset, TEXT_START_Y, color, roboto_face);
 
 		return;
 	}
 
 	uint8_t i = 0;
-	for (i = 0; i < phases[current_phase_index].text.size(); i++) {
-		render_text(i, TEXT_START_X, TEXT_START_Y - HEIGHT*i, glm::vec3(0.0f, 0.0f, 0.0f));
+	for (i = 0; i < cur_phase.text.size(); i++) {
+		FT_Face face = (cur_phase.fonts[i] == 0) ? roboto_face : courier_face;
+		render_text(i, TEXT_START_X, TEXT_START_Y - HEIGHT*i, glm::vec3(0.0f, 0.0f, 0.0f), face);
 	}
 	for (uint8_t j = i; j < hb_buffers.size(); j++) {
+		assert((j - i) >= 0 && (j-i) < cur_phase.option_fonts.size());
+		FT_Face face = (cur_phase.option_fonts[j - i] == 0) ? roboto_face : courier_face;
 		glm::vec3 color = ((j - i) == selected_index) ? glm::vec3(0.25f, 0.25f, 0.9f) : glm::vec3(0.8f, 0.8f, 0.8f);
-		render_text(j, TEXT_START_X, TEXT_START_Y - HEIGHT*(j+1), color);
+		render_text(j, TEXT_START_X, TEXT_START_Y - HEIGHT*(j+1), color, face);
 	}
 }
