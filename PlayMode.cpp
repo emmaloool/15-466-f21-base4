@@ -57,14 +57,13 @@ void PlayMode::fill_game_state() {
             phase.id = stoi(line.substr(0, f_i));
             uint8_t num_plines = stoi(line.substr(f_i+1, s_i)); 	// tells us how many phase text lines to read
             uint8_t num_options = stoi(line.substr(s_i)); 	// tells us how many option lines to read
-			// std::cout << unsigned(phase.id) << " " << unsigned(num_plines) << " " << unsigned(num_options) << std::endl;
 
 			// Add lines for phase's text
 			for (uint8_t i = 0; i < num_plines; i++) {
 				getline(txt_file, line);
+
 				size_t offset = 0;
 				if (line[0] == '#') {
-					std::cout << "Main text code statement!" << std::endl;
 					offset = 1;
 					phase.fonts.push_back(1);
 				}
@@ -79,11 +78,9 @@ void PlayMode::fill_game_state() {
                 getline(txt_file, line);
 			
 				if (line == "-") {
-					// std::cout << "phase " << unsigned(phase.id) << " is bad ending!" << std::endl;
 					phase.game_state = GameState::BAD;
 				}
 				else if (line == "+") {
-					// std::cout << "phase " << unsigned(phase.id) << " is good ending!" << std::endl;
 					phase.game_state = GameState::GOOD;
 				}
 			}
@@ -91,7 +88,7 @@ void PlayMode::fill_game_state() {
 				// Fetch the phase options after
 				for (uint8_t i = 0; i < num_options; i++) {				
 					getline(txt_file, line);
-
+	
 					// Save option's corresponding phase index
 					auto split_ind = line.find(',');
 					phase.option_ids.push_back(stoi(line.substr(0, split_ind)));
@@ -99,7 +96,6 @@ void PlayMode::fill_game_state() {
 					// Save option text
 					size_t offset = 0;
 					if (line[split_ind + 1] == '#') {
-						std::cout << "CODE STATEMENT: " << line.substr(split_ind + 2) << std::endl;
 						phase.option_fonts.push_back(1);
 						offset = 1;
 					}
@@ -112,6 +108,7 @@ void PlayMode::fill_game_state() {
 			}
 
             getline(txt_file,line);		// Skip blank line ahead
+			
             phases[phase.id] = phase;
 
 			assert(phase.fonts.size() == phase.text.size());
@@ -191,22 +188,18 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 	if ((cur_phase.game_state == ONGOING) && (evt.type == SDL_KEYDOWN)) {
 		if (evt.key.keysym.sym == SDLK_RETURN) {
-			// std::cout << "Currently on phase " << current_phase_index << std::endl;
 			// Procure the ID of the phase associated with the choice
 			current_phase_index = cur_phase.option_ids[selected_index];
-			// std::cout << "*** Option index was " << selected_index << ", new phase ID = " << current_phase_index << ", game state = ";
 			setup_phase(current_phase_index);
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_UP) {
 			if (selected_index > 0) {
 				selected_index--;
-				// std::cout << "new op index: " << unsigned(selected_index) << std::endl;
 			}
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_DOWN) {
 			if (selected_index < (cur_phase.option_texts.size() - 1)) {
 				selected_index++;
-				// std::cout << "new op index: " << unsigned(selected_index) << std::endl;
 			}
 			return true;
 		}
@@ -221,9 +214,11 @@ void PlayMode::update(float elapsed) {
 
 
 void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color, uint8_t font) {
+	glDisable(GL_DEPTH_TEST);
+
 	// Render text - again following https://learnopengl.com/In-Practice/Text-Rendering, function RenderText()
 	// Setup character render state to render text 
-	auto Characters = font ? courier_characters : roboto_characters;
+	auto &Characters = font ? courier_characters : roboto_characters;
 	FT_Face face	= font ? courier_face : roboto_face;
 	
 	// Our render state is associated with the shader program color_texture_program
@@ -245,7 +240,6 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color,
 	glUniform3f(text_texture_program->Color_vec3, color.x, color.y, color.z);		// TODO dynamically set colors here, read in as game struct
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(VAO);
-	glDisable(GL_DEPTH_TEST);
 
 	// Get current HB buffer
 	hb_buffer_t *DUMMY_TEST = hb_buffers[hb_index];
@@ -384,7 +378,9 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
 
 		scene.draw(*camera);
-	}	
+	}
+
+	glDisable(GL_DEPTH_TEST); // Don't need now
 
 	Phase cur_phase = phases[current_phase_index];
 

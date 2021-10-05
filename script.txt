@@ -1,7 +1,7 @@
 0 1 2
 Great news! Remember that company Banana that you applied to a couple weeks ago?
-1,#Yeah? 
-1,#No, just tell me?
+1,Yeah? 
+1,No, just tell me?
 
 1 3 2
 They thought you're a great fit for their kPhone Software Engineer position!
@@ -17,7 +17,7 @@ Friday is only a couple days a way, that's not too much time to prepare!
 
 4 1 2
 How are you going to prepare for the interview?
-5,It's just a phone screen, just wing it
+5,Just wing it
 6,LeetCode until dawn
 
 2 1 2
@@ -32,11 +32,11 @@ What are you going to study first?
 10,LeetCode for a couple days, just to get comfortable
 
 5 1 1
-#Ok, if you say so! Have fun!
+Ok, if you say so! Have fun!
 11,[Continue]
 
 6 1 1
-#Ok, if you say so! Have fun!
+Ok, if you say so! Have fun!
 12,[Continue]
 
 8 1 1
@@ -51,17 +51,139 @@ Good thinking, the interviews for kPhone engineering are incredibly niche!
 Smart smart, they'll definitely ask you some tricky tree problems. See ya!
 15,[Continue]
 
-11 0 0
+11 1 1
+[48 hours later...]
+16,[Continue]
+
+12 1 1
+[48 hours later...]
+17,[Continue]
+
+13 1 1
+[Two weeks later...]
+18,[Continue]
+
+14 1 1
+[Two weeks later...]
+19,[Continue]
+
+15 1 1
+[Two weeks later...]
+20,[Continue]
+
+16 2 2
+It's time to start your interview! Let's begin with behavioral questions.
+Why are you interested in working for Banana?
+21, Uh, uh... who?
+22,I've been a big fan of the kPhone since I was a kid!
+
+17 1 1
+Oh no! You overslept and missed your interview!
+23,[*screams in agony*]
+
+21 1 1
+[Oh no! You forgot what Banana does as a company! They are not impressed!]
+24,[You probably shouldn't have winged that!]
+
+22 2 1
+*interviewers node in approval*
+[Success, you've made it to the next question even though you didn't prepare!]
+25,Nice!
+
+18 2 1
+It's time to start your interview! Let's begin with behavioral questions.
+Why are you interested in working for Banana?
+26,I've been a big fan of the kPhone since I was a kid!
+
+19 2 1
+It's time to start your interview! Let's begin with behavioral questions.
+Why are you interested in working for Banana?
+27,I've been a big fan of the kPhone since I was a kid!
+
+20 2 1
+It's time to start your interview! Let's begin with behavioral questions.
+Why are you interested in working for Banana?
+32,I've been a big fan of the kPhone since I was a kid!
+
+23 0 0
 -
 
-12 0 0
+24 0 0
 -
 
-13 0 0
-+
+25 2 2
+Now let's move onto a short programming question.
+How would you compute the midpoint for binary search indices?
+28,#mid = low/2 + hi/2
+28,#mid = (hi - lo)/2
 
-14 0 0
-+
+26 2 2
+Now let's move onto a short programming question.
+How would you compute the midpoint for binary search indices?
+29,#mid = low/2 + hi/2
+29,#mid = (hi - lo)/2
 
-15 0 0
+27 2 3
+Now let's move onto a short programming question.
+How would you compute the midpoint for binary search indices?
+29,#mid = low/2 + hi/2
+31,#mid = low + (hi - lo)/2
+29,#mid = (hi - lo)/2
+
+32 2 3
+Now let's move onto a short programming question.
+How would you compute the midpoint for binary search indices?
+29,#mid = low/2 + hi/2
+33,#mid = low + (hi - lo)/2
+29,#mid = (hi - lo)/2
+
+28 3 1
+Wrong! The answer was:
+#mid = low + (hi - lo)/2
+You would've known that if you prepared or remembered anything from school!
+30,Sad! :(
+
+29 3 1
+Wrong! The answer was:
+#mid = low + (hi - lo)/2
+You probably should have spent more time studying!
+30,Sad! :(
+
+30 0 0
+-
+
+31 2 2
+That's correct! Now here comes the final question.
+What can you do to simulate caustics in rendering?
+35,Hm, let me think about this one...
+35,I know this! 
+
+33 2 1
+That's correct! Now here comes the final question.
+What can you do to simulate caustics in rendering?
+34,Wow, that's pretty niche...
+
+34 1 1
+So do you know the answer?
+36,Sadly, no...
+
+35 1 3
+You do? What's the technique you can use to replicate caustics?
+36,Just some simple inverse kinematics?
+38,You can use a texture to simulating the rippling effect!
+38,You can implement photon mapping!
+
+36 1 1
+No, that was wrong. Maybe you should've paid attention more in 15-462!
+37,Oh well...
+
+37 0 0
+-
+
+38 2 1
+That's correct! I'm impressed, you know your stuff!
+You've made it through the interview!
+39,YAY!
+
+39 0 0
 +

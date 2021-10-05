@@ -64,7 +64,7 @@ struct PlayMode : Mode {
 	// -------------------- Text Drawing --------------------
 
 	const float TEXT_START_X = 80.0f;
-	const float TEXT_START_Y = 350.0f;
+	const float TEXT_START_Y = 500.0f;
 	const float HEIGHT = 40.0f;
 
 	// Character->character map and glyph struct from https://learnopengl.com/In-Practice/Text-Rendering
