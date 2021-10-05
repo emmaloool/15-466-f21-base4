@@ -49,6 +49,8 @@ void PlayMode::fill_game_state() {
     txt_file.open(data_path("../script.txt"), std::ios::in);
     if (txt_file.is_open()) {
         while (getline(txt_file, line)) {
+			// std::cout<<line<<std::endl;
+
             Phase phase;
 
             // Read phases as clumps of lines, so we can't just loop over all lines
@@ -61,7 +63,8 @@ void PlayMode::fill_game_state() {
 			// Add lines for phase's text
 			for (uint8_t i = 0; i < num_plines; i++) {
 				getline(txt_file, line);
-
+				// std::cout<<line<<std::endl;
+	
 				size_t offset = 0;
 				if (line[0] == '#') {
 					offset = 1;
@@ -76,7 +79,8 @@ void PlayMode::fill_game_state() {
 
             if (num_options == 0) {		// Game end state, no more options
                 getline(txt_file, line);
-			
+				// std::cout<<line<<std::endl;
+
 				if (line == "-") {
 					phase.game_state = GameState::BAD;
 				}
@@ -88,7 +92,8 @@ void PlayMode::fill_game_state() {
 				// Fetch the phase options after
 				for (uint8_t i = 0; i < num_options; i++) {				
 					getline(txt_file, line);
-	
+					// std::cout<<line<<std::endl;
+
 					// Save option's corresponding phase index
 					auto split_ind = line.find(',');
 					phase.option_ids.push_back(stoi(line.substr(0, split_ind)));
@@ -108,6 +113,7 @@ void PlayMode::fill_game_state() {
 			}
 
             getline(txt_file,line);		// Skip blank line ahead
+			// std::cout<<line<<std::endl;
 			
             phases[phase.id] = phase;
 
@@ -298,8 +304,8 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color,
 		// Now character should be present in the map at the codepoint!
         Character ch = Characters[c];
 
-        float xpos = x + ch.Bearing.x;
-        float ypos = y - (ch.Size.y - ch.Bearing.y);
+        float xpos = x + ((float)ch.Bearing.x);
+        float ypos = y - (((float)ch.Size.y) - ((float)ch.Bearing.y));
 
         float w = ch.Size.x;
         float h = ch.Size.y;

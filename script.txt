@@ -6,7 +6,7 @@ Great news! Remember that company Banana that you applied to a couple weeks ago?
 1 3 2
 They thought you're a great fit for their kPhone Software Engineer position!
 So they want to schedule you for a final interview! 
-When would you like to schedule your interview starting tomorrow?
+When would you like to schedule your interview, starting tomorrow?
 2,Woah no, that's too soon. I'll need a couple weeks!
 3,Sure, I can do it Friday.
 
@@ -127,14 +127,14 @@ How would you compute the midpoint for binary search indices?
 Now let's move onto a short programming question.
 How would you compute the midpoint for binary search indices?
 29,#mid = low/2 + hi/2
-31,#mid = low + (hi - lo)/2
+40,#mid = low + (hi - lo)/2
 29,#mid = (hi - lo)/2
 
 32 2 3
 Now let's move onto a short programming question.
 How would you compute the midpoint for binary search indices?
 29,#mid = low/2 + hi/2
-33,#mid = low + (hi - lo)/2
+41,#mid = low + (hi - lo)/2
 29,#mid = (hi - lo)/2
 
 28 3 1
@@ -152,20 +152,80 @@ You probably should have spent more time studying!
 30 0 0
 -
 
+40 8 3
+That was easy! Now let's try a slightly harder question.
+What's the total size (in bytes) of this aligned data struct?
+#struct Example {
+#    char yes;
+#    float *no;
+#    char maybe;
+#    int so;
+#}
+42,#16
+43,#24
+42,#19
+
+41 8 3
+That was easy! Now let's try a slightly harder question.
+What's the total size (in bytes) of this aligned data struct?
+#struct Example {
+#    char yes;
+#    float *no;
+#    char maybe;
+#    int so;
+#}
+42,#19
+42,#16
+45,#24
+
+42 1 1
+Sadly, that's not correct! You should've remembered this from 213!
+44,Now that I think of it, I messed this up on the midterm too...
+
+44 0 0
+-
+
+43 1 1
+Alright, let's move onto some graphics questions.
+46,Sure thing, I've reviewed 462, 458, 466, 464, and 463 extensively!
+
+45 1 1
+Alright, let's move onto some graphics questions.
+47,Wait, what?? I thought this was for general a general SWE role?
+
+47 2 1
+*interviewer looks confused* Your resume only lists graphics courses.
+This shouldn't be a challenge for you!
+48,*gulp* here we go...
+
+46 4 1
+We use deferred shading in order to reduce the amount of fragments to shade.
+As you may know, this is implemented with a geometry pre-pass.
+What kind of item *isn't* stored in the geometry buffer during this pre-pass?
+Out of 4: albedo, normal, depth, texture
+31,Texture!
+
+48 4 1
+We use deferred shading in order to reduce the amount of fragments to shade.
+As you may know, this is implemented with a geometry pre-pass.
+What kind of item *isn't* stored in the geometry buffer during this pre-pass?
+Out of 4: albedo, normal, depth, texture
+33,Uh,what??? We didn't cover this in 462?? I guess... texture?
+
 31 2 2
 That's correct! Now here comes the final question.
-What can you do to simulate caustics in rendering?
+What can you do to simulate caustics in rendering? There's 2 possible answers.
 35,Hm, let me think about this one...
 35,I know this! 
 
 33 2 1
 That's correct! Now here comes the final question.
-What can you do to simulate caustics in rendering?
+What can you do to simulate caustics in rendering? There's 2 possible answers.
 34,Wow, that's pretty niche...
 
 34 1 1
 So do you know the answer?
-36,Sadly, no...
+36,Sadly, no... maybe something about Monte Carlo? Inversion sampling?
 
 35 1 3
 You do? What's the technique you can use to replicate caustics?
@@ -174,7 +234,7 @@ You do? What's the technique you can use to replicate caustics?
 38,You can implement photon mapping!
 
 36 1 1
-No, that was wrong. Maybe you should've paid attention more in 15-462!
+No, that was wrong. Maybe you should've paid attention more in 462!
 37,Oh well...
 
 37 0 0
