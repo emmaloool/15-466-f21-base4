@@ -10,7 +10,6 @@
 #include <deque>
 #include <map>
 #include <utility>
-#include <array>
 
 #include <ft2build.h>
 #include <hb.h>
@@ -48,15 +47,15 @@ struct PlayMode : Mode {
 	
 	struct Phase {
 		GameState game_state = GameState::ONGOING;
-		uint8_t id;										// ID of current phase
-		std::vector<std::vector<char>> text;			// Text to display // std::array<char, 256>
+		size_t id;										// ID of current phase
+		std::vector<std::vector<char>> text;			// Text to display
 		std::vector<size_t> option_ids; 				// IDs of options for the phase
 		std::vector<std::vector<char>> option_texts; 	// Text of options for the phase
 	};
 
-	std::vector<Phase> phases;			
-	uint8_t current_phase_index = 0;	// ID of current game phase
-	uint8_t selected_index = 1;			// Logs which choice the user selected
+	std::map<size_t, Phase> phases;		// Maps phase ID -> phase
+	size_t current_phase_index = 0;		// ID of current game phase
+	size_t selected_index = 0;			// Logs which choice the user selected
 										// Constrained by number of options for each phase
 
 	// -------------------- Text Drawing --------------------
