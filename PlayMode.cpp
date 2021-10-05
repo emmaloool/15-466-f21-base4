@@ -131,7 +131,7 @@ PlayMode::PlayMode() : scene(*interview_scene) {
 	camera = &scene.cameras.front();
 
 	// The rest of the implementation of this constructor heavily utilizes code from https://learnopengl.com/In-Practice/Text-Rendering
-	
+	// Special thanks to Alyssa Lee from F20 (https://github.com/lassyla/game4/blob/master/PlayMode.cpp), who pointed me towards this tutorial!
 	// For text shader later
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -258,6 +258,11 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color,
 	// Iterate through all the necessary glyphs to render in this buffer
     for (uint8_t i = 0; i < glyph_count; i++)
     {
+		// In this game, we generate text on the fly
+		// So this is the first time we are potentially seeing new characters
+		// But we don't want to have to render them each time we see them
+		// So...
+
 		// From https://learnopengl.com/In-Practice/Text-Rendering
 		// "For each character, we generate a texture and store its relevant data 
 		// into a Character struct that we add to the Characters map. 

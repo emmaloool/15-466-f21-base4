@@ -1,10 +1,20 @@
-# (TODO: your game's title)
+# Interview Simulator!
 
-Author: (TODO: your name)
+Author: Emma Liu
 
-Design: (TODO: In two sentences or fewer, describe what is new and interesting about your game.)
+Design: It's interview season! Graduation is fast approaching and you need a sick SWE gig! But luckily, you've got the opportunity of a lifetime - you've made it to the final round of interviews! Take your technical skills to the test with a variety of tricky questions.
 
-Text Drawing: (TODO: how does the text drawing in this game work? Is text precomputed? Rendered at runtime? What files or utilities are involved?)
+(DISCLAIMER: Any persons/likeness in this fictional scenario is purely fictional and not based off of any personal experience!)
+
+Text Drawing:
+
+The text drawing uses HarfBuzz to shape the text according to the font, and then uses FreeType to render. For each font, I store a map between glyphs and useful information to render each character. When new glyphs are seen for a given font, they are saved for faster lookup next time. This enables on-demand dynamic text rendering during the game, based on the player's actions. 
+
+As for where the text originates, in the game constructor, I invoke a parsing routine
+that interprets script.txt, which contains information about phase and option states, 
+and store them in an immediate and accessible buffer of chars.
+This enables me to link paths chosen through selecting options. 
+The text for a phase is created when it is loaded.
 
 Screen Shot:
 
@@ -12,9 +22,9 @@ Screen Shot:
 
 How To Play:
 
-(TODO: describe the controls and (if needed) goals/strategy.)
+At each phase, you will be able to make a choice from a set of available options. Use your UP and DOWN keys to toggle between the sets; your tentative choice will be marked in blue. Press ENTER to make your selection and progress in the scene.
 
-Sources: (TODO: list a source URL for any assets you did not create yourself. Make sure you have a license for the asset.)
+Sources: I used the Courier New and Roboto Regular fonts, obtained from [Font Squirrel](https://www.fontsquirrel.com/).
 
 This game was built with [NEST](NEST.md).
 
