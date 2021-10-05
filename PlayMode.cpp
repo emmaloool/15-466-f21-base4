@@ -69,6 +69,7 @@ void PlayMode::fill_game_state() {
 
             if (num_options == 0) {		// Game end state, no more options
                 getline(txt_file, line);
+
 				if (line == "-") {
 					// std::cout << "phase " << unsigned(phase.id) << " is bad ending!" << std::endl;
 					phase.game_state = GameState::BAD;
@@ -77,31 +78,23 @@ void PlayMode::fill_game_state() {
 					// std::cout << "phase " << unsigned(phase.id) << " is good ending!" << std::endl;
 					phase.game_state = GameState::GOOD;
 				}
-
-				// Skip blank line after and move on
-                getline(txt_file, line);
-				continue;
             }
-	
-            // Fetch the phase options after
-            for (uint8_t i = 0; i < num_options; i++) {				
-                getline(txt_file, line);
+			else {
+				// Fetch the phase options after
+				for (uint8_t i = 0; i < num_options; i++) {				
+					getline(txt_file, line);
 
-				// Save option's corresponding phase index
-                auto split_ind = line.find(',');
-                phase.option_ids.push_back(stoi(line.substr(0, split_ind)));
+					// Save option's corresponding phase index
+					auto split_ind = line.find(',');
+					phase.option_ids.push_back(stoi(line.substr(0, split_ind)));
 
-				// Save option text
-				std::vector<char> op_text(line.begin() + split_ind + 1, line.end());
-				phase.option_texts.push_back(op_text);
-			}
-
-			if (num_options == 1) {
-				phase.option_texts.back().clear();
+					// Save option text
+					std::vector<char> op_text(line.begin() + split_ind + 1, line.end());
+					phase.option_texts.push_back(op_text);
+				}
 			}
 
             getline(txt_file,line);		// Skip blank line ahead
-
             phases[phase.id] = phase;
         }
     }
@@ -164,29 +157,28 @@ PlayMode::~PlayMode() {
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 	Phase cur_phase = phases[current_phase_index];
 
-	if (evt.type == SDL_KEYDOWN) {
+	if ((cur_phase.game_state == ONGOING) && (evt.type == SDL_KEYDOWN)) {
 		if (evt.key.keysym.sym == SDLK_RETURN) {
-			std::cout << "Currently on phase " << current_phase_index << std::endl;
+			// std::cout << "Currently on phase " << current_phase_index << std::endl;
 			// Procure the ID of the phase associated with the choice
 			current_phase_index = cur_phase.option_ids[selected_index];
-			std::cout << "*** Option index was " << selected_index << ", new phase ID = " << current_phase_index << std::endl;
+			// std::cout << "*** Option index was " << selected_index << ", new phase ID = " << current_phase_index << ", game state = ";
 			setup_phase(current_phase_index);
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_UP) {
 			if (selected_index > 0) {
 				selected_index--;
-				std::cout << "new op index: " << unsigned(selected_index) << std::endl;
+				// std::cout << "new op index: " << unsigned(selected_index) << std::endl;
 			}
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_DOWN) {
 			if (selected_index < (cur_phase.option_texts.size() - 1)) {
 				selected_index++;
-				std::cout << "new op index: " << unsigned(selected_index) << std::endl;
+				// std::cout << "new op index: " << unsigned(selected_index) << std::endl;
 			}
 			return true;
 		}
 	}
-	assert((selected_index >= 0) && (selected_index < (cur_phase.option_texts.size())));
 	return false;
 }
 
@@ -311,36 +303,17 @@ void PlayMode::render_text(uint32_t hb_index, float x, float y, glm::vec3 color)
 
 
 void PlayMode::setup_phase(size_t phase_id) {
+	// Procur phase at current ID
+	Phase current_phase = phases[phase_id];
+
+	// Reset option index
+	selected_index = 0;
 
 	// Clear text buffer
 	for (auto buf : hb_buffers) hb_buffer_destroy(buf);
 	hb_buffers.clear();
 
-	// Reset option index
-	selected_index = 0;
-
-	// Procur phase at current ID
-	Phase current_phase = phases[phase_id];
-
-	// Populate HB buffers needed to render the entire scene
-	auto add_text_to_HBbuf = [this](std::vector<char> text) {
-		// Setup HB buffer - code from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
-		// and http://www.manpagez.com/html/harfbuzz/harfbuzz-2.3.1/ch03s03.php
-
-		/* Create hb-buffer and populate. */
-		hb_buffer_t *buf = hb_buffer_create();
-		hb_buffer_add_utf8(buf, &text[0], text.size(), 0, text.size());
-
-		/* Guess the script/language/direction */
-		hb_buffer_set_direction(buf, HB_DIRECTION_LTR);
-		hb_buffer_set_script(buf, HB_SCRIPT_LATIN);
-		hb_buffer_set_language(buf, hb_language_from_string("en",-1));
-
-		/* Shape it! */
-		hb_shape(hb_font, buf, NULL, 0);
-
-		hb_buffers.push_back(buf);
-	};
+	if (phases[phase_id].game_state != GameState::ONGOING) return;
 
 	for (std::vector<char> phase_txt : current_phase.text) {
 		add_text_to_HBbuf(phase_txt);
@@ -365,7 +338,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
 		glUseProgram(0);
 
-		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 		glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -376,9 +349,23 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	}	
 
 	if (phases[current_phase_index].game_state != GameState::ONGOING) {
-		// render_text(0, ); 	// TODO: make sure to clear HBbuffer before and add one hbbuffer that says "game over"
-		
-		std::cout << "WE ARE STOPPING THE GAME" << std::endl;
+		std::string result;
+		glm::vec3 color;
+		float offset;
+		if (phases[current_phase_index].game_state == GameState::BAD) {
+			result = "GAME OVER - You bombed your interviews. Back to LinkedIn it is!";
+			color = glm::vec3(0.60f, 0.0f, 0.0f);
+			offset = 165.0f;
+		}
+		else {
+			result = "GAME OVER - You got the job, congrats!";
+			color = glm::vec3(0.0f, 0.90f, 0.0f);
+			offset = 300.0f;
+		}
+		std::vector<char> result_vect(result.begin(), result.end());
+		add_text_to_HBbuf(result_vect);
+		render_text(0, TEXT_START_X + offset, TEXT_START_Y, color);
+
 		return;
 	}
 
@@ -387,7 +374,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		render_text(i, TEXT_START_X, TEXT_START_Y - HEIGHT*i, glm::vec3(0.0f, 0.0f, 0.0f));
 	}
 	for (uint8_t j = i; j < hb_buffers.size(); j++) {
-		glm::vec3 color = ((j - i) == selected_index) ? glm::vec3(0.25f, 0.9f, 0.25f) : glm::vec3(0.8f, 0.8f, 0.8f);
+		glm::vec3 color = ((j - i) == selected_index) ? glm::vec3(0.25f, 0.25f, 0.9f) : glm::vec3(0.8f, 0.8f, 0.8f);
 		render_text(j, TEXT_START_X, TEXT_START_Y - HEIGHT*(j+1), color);
 	}
 }

@@ -75,9 +75,26 @@ struct PlayMode : Mode {
 	hb_font_t *hb_font; 
 	std::vector<hb_buffer_t *> hb_buffers;	// Stores text to render for a given scene
 
+	void add_text_to_HBbuf(std::vector<char> text) {
+		// Setup HB buffer - code from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
+		// and http://www.manpagez.com/html/harfbuzz/harfbuzz-2.3.1/ch03s03.php
+
+		/* Create hb-buffer and populate. */
+		hb_buffer_t *buf = hb_buffer_create();
+		hb_buffer_add_utf8(buf, &text[0], text.size(), 0, text.size());
+
+		/* Guess the script/language/direction */
+		hb_buffer_set_direction(buf, HB_DIRECTION_LTR);
+		hb_buffer_set_script(buf, HB_SCRIPT_LATIN);
+		hb_buffer_set_language(buf, hb_language_from_string("en",-1));
+
+		/* Shape it! */
+		hb_shape(hb_font, buf, NULL, 0);
+
+		hb_buffers.push_back(buf);
+	}
+
 	const float TEXT_START_X = 80.0f;
-	const float TEXT_END_X = 1200.0f;
 	const float TEXT_START_Y = 350.0f;
-	const float TEXT_END_Y = 60.0f;
 	const float HEIGHT = 40.0f;
 };

@@ -5,8 +5,8 @@ Great news! Remember that company Banana that you applied to a couple weeks ago?
 
 1 3 2
 They thought you're a great fit for their kPhone Software Engineer position!
-So they want to schedule you for an onsite! 
-When would you like to schedule your interviews, starting tomorrow?
+So they want to schedule you for a final interview! 
+When would you like to schedule your interview starting tomorrow?
 2,Woah no, that's too soon. I'll need a couple weeks!
 3,Sure, I can do it Friday.
 
@@ -48,7 +48,7 @@ Good thinking, the interviews for kPhone engineering are incredibly niche!
 14,[Continue]
 
 10 1 1
-Smart smart, they're definitely ask you some tricky tree problems. See ya!
+Smart smart, they'll definitely ask you some tricky tree problems. See ya!
 15,[Continue]
 
 11 0 0
